@@ -1,0 +1,112 @@
+@startuml containers-updated
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_TOP_DOWN()
+SHOW_PERSON_SPRITE()
+
+' Тег для новых компонентов
+AddElementTag("new", $bgColor="#005F8E", $borderColor="#003D5C", $fontColor="white", $legendText="Новый компонент (Умный дом)")
+AddRelTag("new", $textColor="#005F8E", $lineColor="#005F8E", $legendText="Новая интеграция (Умный дом)")
+
+title C4 Диаграмма контейнеров: PropDevelopment (обновлено)\n★ — новые компоненты в рамках интеграции «Умный дом»
+
+' ── Внешние персоны ──────────────────────────────────────────────────────────
+Person(client,      "Клиент",           "Потенциальный покупатель жилья")
+Person(owner,       "Собственник",      "Владелец квартиры, пользователь ЖКУ")
+Person(manager,     "Менеджер",         "Сотрудник отдела продаж")
+Person(analyst,     "Бизнес-аналитик",  "Аналитик данных продаж")
+Person(accountant,  "Бухгалтер",        "Финансовый учёт")
+Person(bi_analyst,  "Аналитик BI",      "Бизнес-аналитика и отчётность")
+
+' ── Внешние системы ──────────────────────────────────────────────────────────
+System_Ext(gov,      "Гос. регистрационные органы", "СМЭВ. Регистрация права собственности при онлайн-сделке.")
+System_Ext(utilities,"Поставщики ресурсов ЖКХ",    "API. Данные по коммунальным услугам и тарифам.")
+System_Ext(payment,  "Платёжная система",            "API. Приём оплаты ЖКУ от собственников.")
+
+System_Ext(partner,  "★ Платформа умного дома партнёра", "SaaS. Управляет IoT-устройствами,\nхранит биометрические шаблоны\nи whitelist номеров авто.\nСерверы физически в РФ.", $tags="new")
+System_Ext(intercom, "★ Интеллектуальный домофон",        "IoT-устройство.\nВидеодомофон с модулем биометрии лица.\nРаботает автономно до 72 ч.", $tags="new")
+System_Ext(barrier,  "★ Интеллектуальный шлагбаум",       "IoT-устройство.\nКамера распознавания гос. номеров авто.\nРаботает автономно до 72 ч.", $tags="new")
+
+' ── Граница PropDevelopment ──────────────────────────────────────────────────
+System_Boundary(pd, "PropDevelopment") {
+
+  ' ── Домен: Продажи ─────────────────────────────────────────────────────────
+  Container_Boundary(d1, "Домен: Продажи") {
+    Container(vitrina_sales, "Витрина продаж",         "Монолит",              "Подбор и бронирование недвижимости.\nТочка входа для Клиента.")
+    Container(tour_app,      "client-tour-app",         "Golang + TypeScript",  "Онлайн-тур: осмотр объекта без посещения.")
+    Container(mart_app,      "client-mart-app",         "TypeScript",           "Онлайн-сделка: покупка недвижимости.\nИнтеграция с СМЭВ.")
+    Container(crm_app,       "client-crm-app",          "",                     "Управление клиентскими данными.")
+    Container(estate_app,    "client-mart-estate-app",  "PostgreSQL",           "Управление каталогом объектов недвижимости.")
+    Container(auth_sales,    "auth-service-1",           "",                     "Аутентификация клиентов.")
+    ContainerDb(mart_db,     "client-mart-db",           "PostgreSQL",           "Данные онлайн-сделок.")
+    ContainerDb(estate_db,   "client-mart-estate-db",   "PostgreSQL",           "Данные об объектах недвижимости.")
+    ContainerDb(crm_db,      "crm-db",                  "MongoDB",              "Клиентские данные CRM.")
+  }
+
+  ' ── Домен: ЖКУ ─────────────────────────────────────────────────────────────
+  Container_Boundary(d2, "Домен: ЖКУ (Собственники)") {
+    Container(vitrina_zku,  "Витрина ЖКУ",         "Мобильное приложение", "Точка входа для Собственника.\nОплата ЖКУ, ремонты,\nуправление умным домом.")
+    Container(auth_zku,     "auth-service-1",        "",                     "Аутентификация собственников.")
+    Container(core_app,     "tenant-core-app",       "Golang + TypeScript",  "Основной сервис ЖКУ.\nОплата, ремонты, умный дом (координация).")
+    Container(crm_tenant,   "CRM (tenant)",          "",                     "Управление данными о собственниках.")
+    Container(sh_gateway,   "★ smart-home-gateway",  "Golang",               "Адаптер интеграции с платформой партнёра.\nRate limiting, circuit breaker, аудит.\nЕдинственная точка выхода к партнёру.", $tags="new")
+    ContainerDb(core_db,    "tenant-core-db",        "PostgreSQL",           "Данные по услугам собственников.")
+    ContainerDb(crm_tdb,    "crm-tenant-db",         "PostgreSQL",           "Данные CRM собственников.")
+    ContainerDb(sh_db,      "★ smart-home-db",       "PostgreSQL",           "Конфигурация доступа:\nwhitelist (plate_hash, зашифровано),\nстатусы согласий на биометрию,\nжурнал событий (immutable).", $tags="new")
+  }
+
+  ' ── Домен: Финансы ─────────────────────────────────────────────────────────
+  Container_Boundary(d3, "Домен: Финансы") {
+    Container(acc_svc,   "accountant-service-1", "",      "Система финансового учёта.")
+    ContainerDb(auth_db, "auth-db-1",            "",      "БД аутентификации финансового домена.")
+    Container(ad_fin,    "Active Directory",     "LDAP",  "Служба каталогов финансового домена.")
+  }
+
+  ' ── Общая инфраструктура ───────────────────────────────────────────────────
+  Container(ad_shared, "Active Directory", "LDAP", "Общая служба каталогов.\nИспользуется несколькими доменами.")
+
+  ' ── Домен: Данные ──────────────────────────────────────────────────────────
+  Container_Boundary(d4, "Домен: Данные") {
+    Container(data_store, "Хранилище данных", "",  "Централизованное хранилище.\nПолучает данные из всех доменов.")
+    Container(dwh,        "DWH Хранилище",   "",  "Data Warehouse для BI и аналитики.")
+  }
+}
+
+' ── Отношения: внешние акторы ────────────────────────────────────────────────
+Rel(client,     vitrina_sales, "Подбирает и бронирует", "HTTPS / Firewall")
+Rel(owner,      vitrina_zku,   "Управляет ЖКУ и умным домом", "HTTPS / Firewall")
+Rel(manager,    mart_app,      "Прямой доступ к системам продаж")
+Rel(analyst,    crm_app,       "Прямой доступ")
+Rel(accountant, acc_svc,       "Финансовый учёт")
+Rel(bi_analyst, dwh,           "Аналитика и отчётность")
+
+' ── Отношения: Домен Продажи ─────────────────────────────────────────────────
+Rel(vitrina_sales, auth_sales, "Аутентификация")
+Rel(vitrina_sales, mart_app,   "Данные бронирования")
+Rel(mart_app,      crm_app,    "Клиентские данные")
+Rel(mart_app,      mart_db,    "Читает/пишет")
+Rel(estate_app,    estate_db,  "Читает/пишет")
+Rel(crm_app,       crm_db,     "Читает/пишет")
+Rel(mart_app,      gov,        "Онлайн-сделка, регистрация права", "СМЭВ")
+
+' ── Отношения: Домен ЖКУ ─────────────────────────────────────────────────────
+Rel(vitrina_zku, auth_zku,    "Аутентификация")
+Rel(vitrina_zku, core_app,    "Запросы ЖКУ")
+Rel(vitrina_zku, sh_gateway,  "★ Управление умным домом", "HTTPS / OAuth 2.0", $tags="new")
+Rel(core_app,    sh_gateway,  "★ Делегирует операции умного дома", $tags="new")
+Rel(core_app,    core_db,     "Читает/пишет")
+Rel(crm_tenant,  crm_tdb,     "Читает/пишет")
+Rel(sh_gateway,  sh_db,       "★ Чтение/запись конфигурации доступа", $tags="new")
+Rel(core_app,    utilities,   "Данные по тарифам и услугам", "API")
+Rel(core_app,    payment,     "Оплата ЖКУ", "API")
+
+' ── Отношения: Умный дом (новые) ─────────────────────────────────────────────
+Rel(sh_gateway, partner,  "★ Управление доступом:\nwhitelist авто, разрешения биометрии,\nполучение событий (webhooks)", "REST API / HTTPS + mTLS", $tags="new")
+Rel(partner,    intercom, "★ Управление устройством,\nбиометрические шаблоны", "Зашифрованный канал", $tags="new")
+Rel(partner,    barrier,  "★ Управление устройством,\nwhitelist номеров авто", "Зашифрованный канал", $tags="new")
+
+' ── Отношения: Домен Данные ──────────────────────────────────────────────────
+Rel(data_store, dwh, "Передача для аналитики")
+
+SHOW_LEGEND()
+@enduml

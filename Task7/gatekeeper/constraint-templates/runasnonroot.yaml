@@ -1,0 +1,45 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8spspallowedusers
+  annotations:
+    description: "Requires runAsNonRoot=true and readOnlyRootFilesystem=true on all containers"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sPSPAllowedUsers
+      validation:
+        openAPIV3Schema:
+          type: object
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8spspallowedusers
+
+        # runAsNonRoot must be true at container or pod level
+        violation[{"msg": msg}] {
+          c := input.review.object.spec.containers[_]
+          not c.securityContext.runAsNonRoot == true
+          not input.review.object.spec.securityContext.runAsNonRoot == true
+          msg := sprintf("Container must set runAsNonRoot=true: %v", [c.name])
+        }
+
+        # runAsUser must not be 0 (root)
+        violation[{"msg": msg}] {
+          c := input.review.object.spec.containers[_]
+          c.securityContext.runAsUser == 0
+          msg := sprintf("Container must not run as UID 0 (root): %v", [c.name])
+        }
+
+        violation[{"msg": msg}] {
+          input.review.object.spec.securityContext.runAsUser == 0
+          msg := "Pod securityContext must not set runAsUser=0 (root)"
+        }
+
+        # readOnlyRootFilesystem must be true
+        violation[{"msg": msg}] {
+          c := input.review.object.spec.containers[_]
+          not c.securityContext.readOnlyRootFilesystem == true
+          msg := sprintf("Container must set readOnlyRootFilesystem=true: %v", [c.name])
+        }

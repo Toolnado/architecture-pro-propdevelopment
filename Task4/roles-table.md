@@ -1,0 +1,8 @@
+# Таблица ролей Kubernetes — PropDevelopment
+
+| Роль | Права роли | Группы пользователей |
+| --- | --- | --- |
+| `propdevelopment:privileged` | Полный доступ ко всем ресурсам и группам API (`apiGroups: ["*"]`, `resources: ["*"]`, `verbs: ["*"]`). Включает просмотр и управление `secrets`, управление `nodes`, `namespaces`, RBAC-ресурсами (`roles`, `rolebindings`, `clusterroles`, `clusterrolebindings`), выполнение команд в контейнерах (`pods/exec`), просмотр логов (`pods/log`). | Специалист по ИБ, DevOps-инженер |
+| `propdevelopment:viewer` | Только просмотр (`get`, `list`, `watch`) ресурсов кластера во всех namespace: `pods`, `pods/log`, `services`, `endpoints`, `configmaps`, `namespaces`, `nodes`, `persistentvolumeclaims`, `serviceaccounts`, `deployments`, `replicasets`, `daemonsets`, `statefulsets`, `ingresses`, `networkpolicies`, `jobs`, `cronjobs`. Доступ к `secrets` **запрещён**. | Бизнес-аналитик, Менеджер операционной команды, Владелец продукта |
+| `propdevelopment:configurator` | Полное управление рабочими нагрузками (`get`, `list`, `watch`, `create`, `update`, `patch`, `delete`) в рамках назначенного namespace: `pods`, `pods/log`, `pods/exec`, `pods/portforward`, `services`, `endpoints`, `configmaps`, `persistentvolumeclaims`, `serviceaccounts`, `deployments`, `deployments/scale`, `replicasets`, `daemonsets`, `statefulsets`, `ingresses`, `jobs`, `cronjobs`. Доступ к `secrets` **запрещён**. | Разработчик |
+| `propdevelopment:finance-viewer` | Только просмотр (`get`, `list`, `watch`) в namespace `finance-domain`: `pods`, `pods/log`, `services`, `endpoints`, `configmaps`, `deployments`. Доступ к `secrets` **запрещён**. Доступ к другим namespace **запрещён**. | Бухгалтер |
