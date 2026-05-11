@@ -1,0 +1,111 @@
+# Network policies for PropDevelopment Kubernetes cluster
+#
+# Services deployed in the default namespace:
+#   kubectl run front-end-app          --image=nginx --labels role=front-end          --expose --port 80
+#   kubectl run back-end-api-app       --image=nginx --labels role=back-end-api       --expose --port 80
+#   kubectl run admin-front-end-app    --image=nginx --labels role=admin-front-end    --expose --port 80
+#   kubectl run admin-back-end-app     --image=nginx --labels role=admin-back-end-api --expose --port 80
+#
+# Allowed traffic:
+#   front-end        <-> back-end-api         (pair 1)
+#   admin-front-end  <-> admin-back-end-api   (pair 2)
+#
+# All other cross-pair traffic is blocked by the default-deny policy.
+
+---
+# Policy 1: Default deny — block all ingress for every pod in the namespace.
+# This isolates all pods, including the new admin-back-end-api service,
+# from any pod not explicitly permitted below.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+# Policy 2: Allow ingress to back-end-api only from front-end.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: back-end-api-allow-from-front-end
+spec:
+  podSelector:
+    matchLabels:
+      role: back-end-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              role: front-end
+      ports:
+        - protocol: TCP
+          port: 80
+
+---
+# Policy 3: Allow ingress to front-end only from back-end-api.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: front-end-allow-from-back-end-api
+spec:
+  podSelector:
+    matchLabels:
+      role: front-end
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              role: back-end-api
+      ports:
+        - protocol: TCP
+          port: 80
+
+---
+# Policy 4: Allow ingress to admin-back-end-api only from admin-front-end.
+# All other pods (including front-end and back-end-api) are blocked.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: admin-back-end-api-allow-from-admin-front-end
+spec:
+  podSelector:
+    matchLabels:
+      role: admin-back-end-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              role: admin-front-end
+      ports:
+        - protocol: TCP
+          port: 80
+
+---
+# Policy 5: Allow ingress to admin-front-end only from admin-back-end-api.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: admin-front-end-allow-from-admin-back-end-api
+spec:
+  podSelector:
+    matchLabels:
+      role: admin-front-end
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              role: admin-back-end-api
+      ports:
+        - protocol: TCP
+          port: 80

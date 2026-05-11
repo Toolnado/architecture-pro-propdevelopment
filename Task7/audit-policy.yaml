@@ -1,0 +1,20 @@
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+  - level: RequestResponse
+    verbs: ["create", "update", "patch", "delete"]
+    resources:
+      - group: ""
+        resources: ["pods"]
+      - group: "apps"
+        resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  - level: RequestResponse
+    verbs: ["create", "delete", "update", "patch"]
+    resources:
+      - group: "constraints.gatekeeper.sh"
+        resources: ["*"]
+      - group: "templates.gatekeeper.sh"
+        resources: ["*"]
+      - group: "rbac.authorization.k8s.io"
+        resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+  - level: Metadata

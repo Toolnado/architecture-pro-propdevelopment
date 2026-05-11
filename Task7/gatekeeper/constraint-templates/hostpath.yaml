@@ -1,0 +1,24 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8spspvolumetypes
+  annotations:
+    description: "Denies pods that mount hostPath volumes"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sPSPVolumeTypes
+      validation:
+        openAPIV3Schema:
+          type: object
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8spspvolumetypes
+
+        violation[{"msg": msg}] {
+          vol := input.review.object.spec.volumes[_]
+          vol.hostPath
+          msg := sprintf("hostPath volume is not allowed: %v", [vol.name])
+        }
